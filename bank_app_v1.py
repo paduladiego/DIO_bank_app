@@ -17,7 +17,7 @@ saldo = Decimal("0.00")
 limite_saque = Decimal("500.00")
 saques_diários = 3
 numero_saques = 0
-transacoes = []
+extrato = []
 
 
 def clear_screen():
@@ -31,23 +31,23 @@ def tem_duas_casas(valor: Decimal) -> bool:
 
 def depositar(valor):
     global saldo
-    global transacoes
+    global extrato
     if isinstance(valor, Decimal) and valor > 0 and tem_duas_casas(valor):
         saldo += valor
-        transacoes.append(("Depósito", valor))
+        extrato.append(("Depósito", valor))
         print(f"Depósito de R$ {valor:.2f} realizado com sucesso.")
-        print(transacoes)
+        print(extrato)
     else:
         print("Operação cancelada! Informar valor positivo com duas casas decimal.")
 
 
 def exibir_extrato():
-    global transacoes
-    if not transacoes:
+    global extrato
+    if not extrato:
         print("Não foram realizadas movimentações.")
     else:
         print("\n=== EXTRATO ===")
-        for tipo, valor in transacoes:
+        for tipo, valor in extrato:
             print(f"{tipo}: R$ {valor:.2f}")
         print(f"\nSaldo atual: R$ {saldo:.2f}")
 
@@ -60,31 +60,34 @@ def extrato():
     pass
 
 
-while True:
-    print("\n=== MENU ===")
-    print("[d] Depositar")
-    print("[s] Sacar")
-    print("[e] Extrato")
-    print("[q] Sair")
+if __name__ == "__main__":
+    while True:
+        print("\n=== MENU ===")
+        print("[d] Depositar")
+        print("[s] Sacar")
+        print("[e] Extrato")
+        print("[q] Sair")
 
-    opcao = input("Escolha uma opção: ").lower()
-    clear_screen()
-    match opcao:
-        case "d":
-            valor = Decimal(input("Informe o valor do depósito: ").replace(",", "."))
+        opcao = input("Escolha uma opção: ").lower()
+        clear_screen()
+        match opcao:
+            case "d":
+                valor = Decimal(
+                    input("Informe o valor do depósito: ").replace(",", ".")
+                )
 
-            depositar(valor)
+                depositar(valor)
 
-        case "s":
-            valor = Decimal(input("Informe o valor do saque: ").replace(",", "."))
-            print(sacar(valor))
+            case "s":
+                valor = Decimal(input("Informe o valor do saque: ").replace(",", "."))
+                print(sacar(valor))
 
-        case "e":
-            exibir_extrato()
+            case "e":
+                exibir_extrato()
 
-        case "q":
-            print("Obrigado por utilizar nosso sistema bancário!")
-            break
+            case "q":
+                print("Obrigado por utilizar nosso sistema bancário!")
+                break
 
-        case _:
-            print("Opção inválida, tente novamente.")
+            case _:
+                print("Opção inválida, tente novamente.")
