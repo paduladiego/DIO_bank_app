@@ -15,7 +15,7 @@
 #       o saldo atual da conta. Se o extrato estiver em branco, exibir a mensagem: Não foram realizadas movimentações.
 #   Os valores devem ser exibidos utilizando o formato R$ xxx.xx, exemplo: 1500.45 = R$ 1500.45
 from decimal import Decimal, getcontext, InvalidOperation
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 
 saldo = Decimal("0.00")
@@ -58,7 +58,7 @@ def depositar(valor):
     global saldo, extrato
     if isinstance(valor, Decimal) and valor > 0 and tem_duas_casas(valor):
         saldo += valor
-        extrato.append(("Depósito", valor, datetime.now()))
+        extrato.append(("Depósito", valor, datetime.now(timezone.utc)))
         return f"Depósito de {formatar_brl(valor)} realizado com sucesso."
     else:
         return "Operação cancelada! Informar valor positivo com duas casas decimais."
@@ -108,7 +108,7 @@ def sacar(valor):
 
     saldo -= valor
     numero_saques += 1
-    extrato.append(("Saque", valor, datetime.now()))
+    extrato.append(("Saque", valor, datetime.now(timezone.utc)))
     return f"Saque de {formatar_brl(valor)} realizado com sucesso."
     # implementar limite diario acumulado pois posso fazer muito saques pequenos e passar do limite diario
 
@@ -120,7 +120,8 @@ def exibir_extrato():
     else:
         print("\n=== EXTRATO ===")
         for tipo, valor, data in extrato:
-            data_formatada = data.strftime("%d/%m/%Y %H:%M:%S")
+            data_local = data.astimezone()
+            data_formatada = data_local.strftime("%d/%m/%Y %H:%M:%S")
             print(f"{tipo}: {formatar_brl(valor)} - {data_formatada}")
             # print(f"{tipo}: {formatar_brl(valor)}")
         print(f"\nSaldo atual: {formatar_brl(saldo)}")
