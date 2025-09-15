@@ -15,6 +15,7 @@
 #       o saldo atual da conta. Se o extrato estiver em branco, exibir a mensagem: Não foram realizadas movimentações.
 #   Os valores devem ser exibidos utilizando o formato R$ xxx.xx, exemplo: 1500.45 = R$ 1500.45
 from decimal import Decimal, getcontext, InvalidOperation
+from datetime import datetime
 import os
 
 saldo = Decimal("0.00")
@@ -57,7 +58,7 @@ def depositar(valor):
     global saldo, extrato
     if isinstance(valor, Decimal) and valor > 0 and tem_duas_casas(valor):
         saldo += valor
-        extrato.append(("Depósito", valor))
+        extrato.append(("Depósito", valor, datetime.now()))
         return f"Depósito de {formatar_brl(valor)} realizado com sucesso."
     else:
         return "Operação cancelada! Informar valor positivo com duas casas decimais."
@@ -74,8 +75,10 @@ def sacar_alem_limite_diario(valor):
         opcao = input("Escolha uma opção: ").lower()
         match opcao:
             case "s":
+                limpar_tela()
                 return Decimal(valor) + Decimal("0.50")
             case "n":
+                limpar_tela()
                 return "Operação cancelada! Número máximo de saques diários atingido."
             case _:
                 print("Opção inválida, tente novamente.")
@@ -105,7 +108,7 @@ def sacar(valor):
 
     saldo -= valor
     numero_saques += 1
-    extrato.append(("Saque", valor))
+    extrato.append(("Saque", valor, datetime.now()))
     return f"Saque de {formatar_brl(valor)} realizado com sucesso."
     # implementar limite diario acumulado pois posso fazer muito saques pequenos e passar do limite diario
 
@@ -116,8 +119,10 @@ def exibir_extrato():
         print("Não foram realizadas movimentações.")
     else:
         print("\n=== EXTRATO ===")
-        for tipo, valor in extrato:
-            print(f"{tipo}: {formatar_brl(valor)}")
+        for tipo, valor, data in extrato:
+            data_formatada = data.strftime("%d/%m/%Y %H:%M:%S")
+            print(f"{tipo}: {formatar_brl(valor)} - {data_formatada}")
+            # print(f"{tipo}: {formatar_brl(valor)}")
         print(f"\nSaldo atual: {formatar_brl(saldo)}")
 
 
