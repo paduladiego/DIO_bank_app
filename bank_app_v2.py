@@ -1,28 +1,21 @@
-# variáveis Sacar, depositar, saldo, extrato, limite, numero_saques, LIMITE_SAQUES
-# funções sacar, depositar, exibir_extrato, menu, validar_numero, validar_valor
-# **Operação de depósito**
-#   Deve ser possível depositar valores positivos para a minha conta bancária.
-#   A v1 do projeto trabalha apenas com 1 usuário, dessa forma nao precisamos nos preocupar em identificar
-#       qual é o número da agência e conta bancária. Todos os depósitos devem ser armazenados em uma variável e
-#       exibidos na operação de extrato.
-# ** Operação de saque **
-#   O sistema deve permitir realizar 3 saques diários com limite máximo de R$ 500,00 por saque. Caso o usuário
-#       não tenha saldo em conta, o sistema deve exibir uma mensagem informando que não será possível sacar o
-#       dinheiro por falta de saldo. Todos os saques devem ser armazenados em uma variável e exibidos na operação
-#       de extrato.
-# **Operação de extrato**
-#   Essa operação deve listar todos os depósitos e saques realizados na conta. No fim da listagem deve ser exibido
-#       o saldo atual da conta. Se o extrato estiver em branco, exibir a mensagem: Não foram realizadas movimentações.
-#   Os valores devem ser exibidos utilizando o formato R$ xxx.xx, exemplo: 1500.45 = R$ 1500.45
 from decimal import Decimal, getcontext, InvalidOperation
 from datetime import datetime, timezone
 import os
 
 saldo = Decimal("0.00")
 limite_saque = Decimal("500.00")
+valor_sacar_plus = Decimal("0.50")
+valor_transacao_plus = Decimal("0.50")
+transacao_plus = 0
+operacoes_diarias = 10
+numero_operacoes = 0
 saques_diarios = 3
 numero_saques = 0
 extrato = []
+
+
+def operacoes_diarias_totais():
+    return operacoes_diarias + transacao_plus
 
 
 def limpar_tela():
@@ -53,17 +46,6 @@ def checar_valor(mensagem: str) -> Decimal:
             )
 
 
-def depositar(valor):
-    """Realiza um depósito na conta bancária."""
-    global saldo, extrato
-    if isinstance(valor, Decimal) and valor > 0 and tem_duas_casas(valor):
-        saldo += valor
-        extrato.append(("Depósito", valor, datetime.now(timezone.utc)))
-        return f"Depósito de {formatar_brl(valor)} realizado com sucesso."
-    else:
-        return "Operação cancelada! Informar valor positivo com duas casas decimais."
-
-
 def sacar_alem_limite_diario(valor):
     """Verifica se o valor do saque excede o limite por saque."""
     global saques_diarios, numero_saques
@@ -76,7 +58,10 @@ def sacar_alem_limite_diario(valor):
         match opcao:
             case "s":
                 limpar_tela()
-                return Decimal(valor) + Decimal("0.50")
+                extrato.append(
+                    ("Sacar Plus", valor_sacar_plus, datetime.now(timezone.utc))
+                )
+                return Decimal(valor)
             case "n":
                 limpar_tela()
                 return "Operação cancelada! Número máximo de saques diários atingido."
@@ -84,9 +69,62 @@ def sacar_alem_limite_diario(valor):
                 print("Opção inválida, tente novamente.")
 
 
+def transacao_alem_limite_diario():
+    """Verifica se o valor do saque excede o limite por saque."""
+    global transacao_plus
+    while True:
+        print("\n=== Transação Plus ===")
+        print(
+            "Você atingiu o limite diário de operações bancárias. \nGaranta sua transação além do limite por apenas R$ 0,50?"
+        )
+        print("[s] Sim")
+        print("[n] Não")
+        opcao = input("Escolha uma opção: ").lower()
+        match opcao:
+            case "s":
+                limpar_tela()
+                transacao_plus += 1
+                extrato.append(
+                    ("Transação Plus", valor_transacao_plus, datetime.now(timezone.utc))
+                )
+                return "Transação Plus ativada com sucesso."
+
+            case "n":
+                limpar_tela()
+                return (
+                    "Operação cancelada! Número máximo de operações diárias atingida."
+                )
+            case _:
+                print("Opção inválida, tente novamente.")
+
+
+def registrar_operações(opcao: str) -> bool:
+    global transacao_plus, oeperacoes_diarias, numero_operacoes
+    if opcao in ("d", "s", "e"):
+        if numero_operacoes >= operacoes_diarias_totais():
+            print("Limite diário de operações atingido.")
+            print(f"Operação nº {numero_operacoes}/{operacoes_diarias}")
+            resultado = transacao_alem_limite_diario()
+            print(resultado)
+            return False
+    return True
+
+
+def depositar(valor):
+    """Realiza um depósito na conta bancária."""
+    global saldo, extrato, numero_operacoes
+    if isinstance(valor, Decimal) and valor > 0 and tem_duas_casas(valor):
+        saldo += valor
+        numero_operacoes += 1
+        extrato.append(("Depósito", valor, datetime.now(timezone.utc)))
+        return f"Depósito de {formatar_brl(valor)} realizado com sucesso."
+    else:
+        return "Operação cancelada! Informar valor positivo com duas casas decimais."
+
+
 def sacar(valor):
     """Realiza um saque na conta bancária."""
-    global saldo, numero_saques, saques_diarios, limite_saque, extrato
+    global saldo, numero_saques, saques_diarios, limite_saque, extrato, numero_operacoes
 
     if valor > limite_saque:
         return f"Operação cancelada! O valor do saque excede o limite de R$ {limite_saque:.2f} por saque."
@@ -108,23 +146,28 @@ def sacar(valor):
 
     saldo -= valor
     numero_saques += 1
+    numero_operacoes += 1
     extrato.append(("Saque", valor, datetime.now(timezone.utc)))
     return f"Saque de {formatar_brl(valor)} realizado com sucesso."
     # implementar limite diario acumulado pois posso fazer muito saques pequenos e passar do limite diario
 
 
 def exibir_extrato():
-    global extrato, saldo
+    global extrato, saldo, numero_operacoes, operacoes_diarias, numero_saques, saques_diarios
     if not extrato:
         print("Não foram realizadas movimentações.")
     else:
+        numero_operacoes += 1
+        extrato.append(("Exibir Extrato", Decimal("0.00"), datetime.now(timezone.utc)))
         print("\n=== EXTRATO ===")
         for tipo, valor, data in extrato:
             data_local = data.astimezone()
             data_formatada = data_local.strftime("%d/%m/%Y %H:%M:%S")
             print(f"{tipo}: {formatar_brl(valor)} - {data_formatada}")
-            # print(f"{tipo}: {formatar_brl(valor)}")
         print(f"\nSaldo atual: {formatar_brl(saldo)}")
+        print(f"\nNúmero de operações hoje: {numero_operacoes}/{operacoes_diarias}")
+        print(f"Número de saques hoje: {numero_saques}/{saques_diarios}")
+        print("=== FIM DO EXTRATO ===")
 
 
 if __name__ == "__main__":
@@ -137,6 +180,10 @@ if __name__ == "__main__":
 
         opcao = input("Escolha uma opção: ").lower()
         limpar_tela()
+
+        if not registrar_operações(opcao):
+            continue
+
         match opcao:
             case "d":
                 valor = checar_valor("Informe o valor do depósito: ")
