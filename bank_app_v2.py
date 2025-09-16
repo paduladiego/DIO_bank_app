@@ -1,17 +1,78 @@
 from decimal import Decimal, getcontext, InvalidOperation
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 import os
+import json
 
-saldo = Decimal("0.00")
+# BKP
+arquivo_dados_saida = "state.json"
+
+# variáveis fixas
 limite_saque = Decimal("500.00")
 valor_sacar_plus = Decimal("0.50")
 valor_transacao_plus = Decimal("0.50")
-transacao_plus = 0
 operacoes_diarias = 10
-numero_operacoes = 0
 saques_diarios = 3
+
+# Variáveis dinâmicas
+ultimo_dia = date.today()
+saldo = Decimal("0.00")
+transacao_plus = 0
+numero_operacoes = 0
 numero_saques = 0
 extrato = []
+
+
+def carregar_dados_de_entrada():
+    global ultimo_dia, saldo, transacao_plus, numero_operacoes, numero_saques, extrato
+    try:
+        with open(arquivo_dados_saida, "r") as arquivo:
+            dados = json.load(arquivo)
+            ultimo_dia = date.fromisoformat(dados["ultimo_dia"])
+            saldo = Decimal(dados["saldo"])
+            transacao_plus = dados["transacao_plus"]
+            numero_operacoes = dados["numero_operacoes"]
+            numero_saques = dados["numero_saques"]
+            extrato = [
+                (tipo, Decimal(valor), datetime.fromisoformat(data))
+                for tipo, valor, data in dados["extrato"]
+            ]
+    except FileNotFoundError:
+        ultimo_dia = date.today()
+        saldo = Decimal("0.00")
+        transacao_plus = 0
+        numero_operacoes = 0
+        numero_saques = 0
+        extrato = []
+
+
+def armazenar_dados_de_saida():
+    dados = {
+        "ultimo_dia": ultimo_dia.isoformat(),
+        "saldo": str(saldo),
+        "transacao_plus": transacao_plus,
+        "numero_operacoes": numero_operacoes,
+        "numero_saques": numero_saques,
+        "extrato": [
+            (tipo, str(valor), data.isoformat()) for tipo, valor, data in extrato
+        ],
+    }
+    with open(arquivo_dados_saida, "w") as arquivo:
+        json.dump(dados, arquivo, indent=2)
+
+
+def resetar_contadores_diarios():
+    global ultimo_dia, transacao_plus, numero_operacoes, numero_saques
+    hoje = date.today()
+    if hoje != ultimo_dia:
+        transacao_plus = 0
+        numero_operacoes = 0
+        numero_saques = 0
+        ultimo_dia = hoje
+        print(
+            f"""Contadores diários foram resetados. Você possuí: \n
+               - {operacoes_diarias} operações hoje.
+               - {saques_diarios} saques hoje."""
+        )
 
 
 def operacoes_diarias_totais():
@@ -36,6 +97,10 @@ def tem_duas_casas(valor: Decimal) -> bool:
 def checar_valor(mensagem: str) -> Decimal:
     while True:
         valor_digitado = input(mensagem).replace(",", ".")
+        if any(c.isalpha() for c in valor_digitado):
+            limpar_tela()
+            print("Entrada inválida! O valor não pode conter letras.")
+            continue
         try:
             valor = Decimal(valor_digitado)
             return valor
@@ -87,7 +152,7 @@ def transacao_alem_limite_diario():
                 extrato.append(
                     ("Transação Plus", valor_transacao_plus, datetime.now(timezone.utc))
                 )
-                return "Transação Plus ativada com sucesso."
+                return "Transação Plus ativada com sucesso.\n Você pode continuar suas operações."
 
             case "n":
                 limpar_tela()
@@ -99,7 +164,7 @@ def transacao_alem_limite_diario():
 
 
 def registrar_operações(opcao: str) -> bool:
-    global transacao_plus, oeperacoes_diarias, numero_operacoes
+    global transacao_plus, operacoes_diarias, numero_operacoes
     if opcao in ("d", "s", "e"):
         if numero_operacoes >= operacoes_diarias_totais():
             print("Limite diário de operações atingido.")
@@ -171,7 +236,11 @@ def exibir_extrato():
 
 
 if __name__ == "__main__":
+    carregar_dados_de_entrada()
+
     while True:
+        resetar_contadores_diarios()
+
         print("\n=== MENU ===")
         print("[d] Depositar")
         print("[s] Sacar")
@@ -197,6 +266,7 @@ if __name__ == "__main__":
                 exibir_extrato()
 
             case "q":
+                armazenar_dados_de_saida()
                 print("Obrigado por utilizar nosso sistema bancário!")
                 break
 
