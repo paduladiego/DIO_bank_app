@@ -134,9 +134,8 @@ def sacar_alem_limite_diario(valor):
                 print("Opção inválida, tente novamente.")
 
 
-def transacao_alem_limite_diario():
+def transacao_alem_limite_diario(transacao_plus, extrato, valor_transacao_plus):
     """Verifica se o valor do saque excede o limite por saque."""
-    global transacao_plus
     while True:
         print("\n=== Transação Plus ===")
         print(
@@ -152,78 +151,158 @@ def transacao_alem_limite_diario():
                 extrato.append(
                     ("Transação Plus", valor_transacao_plus, datetime.now(timezone.utc))
                 )
-                return "Transação Plus ativada com sucesso.\n Você pode continuar suas operações."
+                return (
+                    transacao_plus,
+                    extrato,
+                    "Transação Plus ativada com sucesso.\n Você pode continuar suas operações.",
+                )
 
             case "n":
                 limpar_tela()
                 return (
-                    "Operação cancelada! Número máximo de operações diárias atingida."
+                    transacao_plus,
+                    extrato,
+                    (
+                        "Operação cancelada! Número máximo de operações diárias atingida."
+                    ),
                 )
             case _:
                 print("Opção inválida, tente novamente.")
 
 
-def registrar_operações(opcao: str) -> bool:
-    global transacao_plus, operacoes_diarias, numero_operacoes
-    if opcao in ("d", "s", "e"):
+def registrar_operações_old(
+    opcao: str,
+    numero_operacoes: int,
+    transacao_plus: int,
+    extrato: list,
+    operacoes_diarias: int,
+    valor_transacao_plus: Decimal,
+) -> tuple[bool, int, int]:
+    """
+    Verifica se ainda é possível realizar a operação.
+    Retorna (pode_continuar, numero_operacoes, transacao_plus, extrato).
+    """
+    if opcao in ("d", "s", "i"):
         if numero_operacoes >= operacoes_diarias_totais():
             print("Limite diário de operações atingido.")
             print(f"Operação nº {numero_operacoes}/{operacoes_diarias}")
-            resultado = transacao_alem_limite_diario()
-            print(resultado)
-            return False
+            transacao_plus, extrato, msg = transacao_alem_limite_diario(
+                transacao_plus, extrato, valor_transacao_plus
+            )
+            print(msg)
+            return False, numero_operacoes, transacao_plus, extrato
+    return True, numero_operacoes, transacao_plus, extrato
+
+
+def registrar_operacoes(
+    opcao: str,
+    numero_operacoes: int,
+    transacao_plus: int,
+    operacoes_diarias: int,
+) -> bool:
+    """
+    Apenas valida se ainda é possível realizar a operação.
+    Não chama transação plus nem altera estado.
+    """
+    limite_total = operacoes_diarias + transacao_plus
+    if opcao in ("d", "s", "i") and numero_operacoes >= limite_total:
+        return False
     return True
 
 
-def depositar(valor):
+def depositar(valor, saldo, extrato, numero_operacoes, /):
     """Realiza um depósito na conta bancária."""
-    global saldo, extrato, numero_operacoes
     if isinstance(valor, Decimal) and valor > 0 and tem_duas_casas(valor):
         saldo += valor
         numero_operacoes += 1
         extrato.append(("Depósito", valor, datetime.now(timezone.utc)))
-        return f"Depósito de {formatar_brl(valor)} realizado com sucesso."
+        return (
+            saldo,
+            extrato,
+            numero_operacoes,
+            f"Depósito de {formatar_brl(valor)} realizado com sucesso.",
+        )
     else:
-        return "Operação cancelada! Informar valor positivo com duas casas decimais."
+        return (
+            saldo,
+            extrato,
+            numero_operacoes,
+            """=== Operação cancelada! ===
+            Informar valor positivo com duas casas decimais.""",
+        )
 
 
-def sacar(valor):
+def sacar(
+    *,
+    valor,
+    saldo,
+    limite_saque,
+    numero_saques,
+    extrato,
+    numero_operacoes,
+    saques_diarios,
+):
     """Realiza um saque na conta bancária."""
-    global saldo, numero_saques, saques_diarios, limite_saque, extrato, numero_operacoes
-
     if valor > limite_saque:
-        return f"Operação cancelada! O valor do saque excede o limite de R$ {limite_saque:.2f} por saque."
+        return (
+            saldo,
+            extrato,
+            numero_saques,
+            numero_operacoes,
+            f"Operação cancelada! O valor do saque excede o limite de R$ {limite_saque:.2f} por saque.",
+        )
 
     if numero_saques >= saques_diarios:
         sacar_plus = sacar_alem_limite_diario(valor)
         if isinstance(sacar_plus, Decimal):
             valor = sacar_plus
         else:
-            return sacar_plus
+            return saldo, extrato, numero_saques, numero_operacoes, sacar_plus
 
     if valor > saldo:
-        return "Operação cancelada! Saldo insuficiente."
+        return (
+            saldo,
+            extrato,
+            numero_saques,
+            numero_operacoes,
+            "Operação cancelada! Saldo insuficiente.",
+        )
 
     if valor <= 0 or not tem_duas_casas(valor):
         return (
-            "Operação cancelada! Informar valor positivo com até duas casas decimais."
+            saldo,
+            extrato,
+            numero_saques,
+            numero_operacoes,
+            """=== Operação cancelada! === 
+            Informar valor positivo com até duas casas decimais.""",
         )
 
     saldo -= valor
     numero_saques += 1
     numero_operacoes += 1
     extrato.append(("Saque", valor, datetime.now(timezone.utc)))
-    return f"Saque de {formatar_brl(valor)} realizado com sucesso."
+    return (
+        saldo,
+        extrato,
+        numero_saques,
+        numero_operacoes,
+        f"Saque de {formatar_brl(valor)} realizado com sucesso.",
+    )
     # implementar limite diario acumulado pois posso fazer muito saques pequenos e passar do limite diario
 
 
-def exibir_extrato():
-    global extrato, saldo, numero_operacoes, operacoes_diarias, numero_saques, saques_diarios
+def imprimir_extrato(
+    extrato, saldo, numero_operacoes, operacoes_diarias, numero_saques, saques_diarios
+):
+    """imprime o extrato, registra no histórico e incrementa número de operações."""
     if not extrato:
         print("Não foram realizadas movimentações.")
     else:
         numero_operacoes += 1
-        extrato.append(("Exibir Extrato", Decimal("0.00"), datetime.now(timezone.utc)))
+        extrato.append(
+            ("Imprimir Extrato", Decimal("0.00"), datetime.now(timezone.utc))
+        )
         print("\n=== EXTRATO ===")
         for tipo, valor, data in extrato:
             data_local = data.astimezone()
@@ -233,6 +312,26 @@ def exibir_extrato():
         print(f"\nNúmero de operações hoje: {numero_operacoes}/{operacoes_diarias}")
         print(f"Número de saques hoje: {numero_saques}/{saques_diarios}")
         print("=== FIM DO EXTRATO ===")
+    return extrato, numero_operacoes
+
+
+def exibir_extrato(
+    extrato, saldo, numero_operacoes, operacoes_diarias, numero_saques, saques_diarios
+):
+    """Exibe o extrato apenas na tela, não registra histórico e não incrementa operações."""
+    if not extrato:
+        print("Não foram realizadas movimentações.")
+    else:
+        print("\n=== EXIBIR EXTRATO ===")
+        for tipo, valor, data in extrato:
+            data_local = data.astimezone()
+            data_formatada = data_local.strftime("%d/%m/%Y %H:%M:%S")
+            print(f"{tipo}: {formatar_brl(valor)} - {data_formatada}")
+        print(f"\nSaldo atual: {formatar_brl(saldo)}")
+        print(f"\nNúmero de operações hoje: {numero_operacoes}/{operacoes_diarias}")
+        print(f"Número de saques hoje: {numero_saques}/{saques_diarios}")
+        print("=== FIM DO EXIBIR EXTRATO ===")
+        return None
 
 
 if __name__ == "__main__":
@@ -244,26 +343,64 @@ if __name__ == "__main__":
         print("\n=== MENU ===")
         print("[d] Depositar")
         print("[s] Sacar")
-        print("[e] Extrato")
+        print("[e] Exibir extrato (somente tela)")
+        print("[i] Imprimir extrato (consome operação)")
         print("[q] Sair")
 
         opcao = input("Escolha uma opção: ").lower()
         limpar_tela()
 
-        if not registrar_operações(opcao):
-            continue
+        # Valida limite. Se atingiu, oferece Transação Plus uma única vez.
+        if not registrar_operacoes(
+            opcao, numero_operacoes, transacao_plus, operacoes_diarias
+        ):
+            transacao_plus, extrato, msg = transacao_alem_limite_diario(
+                transacao_plus, extrato, valor_transacao_plus
+            )
+            print(msg)
+            if "cancelada" in msg:
+                continue
 
         match opcao:
             case "d":
                 valor = checar_valor("Informe o valor do depósito: ")
-                print(depositar(valor))
+                saldo, extrato, numero_operacoes, msg = depositar(
+                    valor, saldo, extrato, numero_operacoes
+                )
+                print(msg)
 
             case "s":
                 valor = checar_valor("Informe o valor do saque: ")
-                print(sacar(valor))
+                saldo, extrato, numero_saques, numero_operacoes, msg = sacar(
+                    saldo=saldo,
+                    valor=valor,
+                    extrato=extrato,
+                    limite_saque=limite_saque,
+                    numero_saques=numero_saques,
+                    saques_diarios=saques_diarios,
+                    numero_operacoes=numero_operacoes,
+                )
+                print(msg)
 
             case "e":
-                exibir_extrato()
+                exibir_extrato(
+                    extrato,
+                    saldo,
+                    numero_operacoes,
+                    operacoes_diarias,
+                    numero_saques,
+                    saques_diarios,
+                )
+
+            case "i":
+                extrato, numero_operacoes = imprimir_extrato(
+                    extrato,
+                    saldo,
+                    numero_operacoes,
+                    operacoes_diarias,
+                    numero_saques,
+                    saques_diarios,
+                )
 
             case "q":
                 armazenar_dados_de_saida()
