@@ -23,7 +23,6 @@ extrato = []
 
 
 def carregar_dados_de_entrada():
-    global ultimo_dia, saldo, transacao_plus, numero_operacoes, numero_saques, extrato
     try:
         with open(arquivo_dados_saida, "r") as arquivo:
             dados = json.load(arquivo)
@@ -44,8 +43,12 @@ def carregar_dados_de_entrada():
         numero_saques = 0
         extrato = []
 
+    return ultimo_dia, saldo, transacao_plus, numero_operacoes, numero_saques, extrato
 
-def armazenar_dados_de_saida():
+
+def armazenar_dados_de_saida(
+    ultimo_dia, saldo, transacao_plus, numero_operacoes, numero_saques, extrato
+):
     dados = {
         "ultimo_dia": ultimo_dia.isoformat(),
         "saldo": str(saldo),
@@ -60,8 +63,14 @@ def armazenar_dados_de_saida():
         json.dump(dados, arquivo, indent=2)
 
 
-def resetar_contadores_diarios():
-    global ultimo_dia, transacao_plus, numero_operacoes, numero_saques
+def resetar_contadores_diarios(
+    ultimo_dia,
+    transacao_plus,
+    numero_operacoes,
+    numero_saques,
+    operacoes_diarias,
+    saques_diarios,
+):
     hoje = date.today()
     if hoje != ultimo_dia:
         transacao_plus = 0
@@ -73,10 +82,12 @@ def resetar_contadores_diarios():
                - {operacoes_diarias} operações hoje.
                - {saques_diarios} saques hoje."""
         )
+    return ultimo_dia, transacao_plus, numero_operacoes, numero_saques
 
 
-def operacoes_diarias_totais():
-    return operacoes_diarias + transacao_plus
+def operacoes_diarias_totais(operacoes_diarias, transacao_plus):
+    operacoes_totais = operacoes_diarias + transacao_plus
+    return operacoes_totais
 
 
 def limpar_tela():
@@ -111,9 +122,20 @@ def checar_valor(mensagem: str) -> Decimal:
             )
 
 
-def sacar_alem_limite_diario(valor):
+def checar_saldo(saldo, valor):
+    if saldo <= 0:
+        return False, "Operação cancelada! Saldo insuficiente."
+    if saldo < valor:
+        falta = valor - saldo
+        return (
+            False,
+            f"Operação cancelada! Saldo insuficiente, faltam {formatar_brl(falta)}",
+        )
+    return True, ""
+
+
+def sacar_alem_limite_diario(saldo, valor, extrato, valor_sacar_plus):
     """Verifica se o valor do saque excede o limite por saque."""
-    global saques_diarios, numero_saques
     while True:
         print("\n=== Saque Plus ===")
         print("Deseja sacar além do limite diário com apenas adicional R$ 0,50?")
@@ -122,11 +144,18 @@ def sacar_alem_limite_diario(valor):
         opcao = input("Escolha uma opção: ").lower()
         match opcao:
             case "s":
+                ok, msg = checar_saldo(saldo, valor_sacar_plus)
+                if not ok:
+                    limpar_tela()
+                    print(msg)
+                    return None
+
                 limpar_tela()
+                saldo -= valor_sacar_plus
                 extrato.append(
                     ("Sacar Plus", valor_sacar_plus, datetime.now(timezone.utc))
                 )
-                return Decimal(valor)
+                return saldo, valor
             case "n":
                 limpar_tela()
                 return "Operação cancelada! Número máximo de saques diários atingido."
@@ -134,7 +163,7 @@ def sacar_alem_limite_diario(valor):
                 print("Opção inválida, tente novamente.")
 
 
-def transacao_alem_limite_diario(transacao_plus, extrato, valor_transacao_plus):
+def transacao_alem_limite_diario(transacao_plus, saldo, extrato, valor_transacao_plus):
     """Verifica se o valor do saque excede o limite por saque."""
     while True:
         print("\n=== Transação Plus ===")
@@ -146,21 +175,38 @@ def transacao_alem_limite_diario(transacao_plus, extrato, valor_transacao_plus):
         opcao = input("Escolha uma opção: ").lower()
         match opcao:
             case "s":
+                ok, msg = checar_saldo(saldo, valor_transacao_plus)
+                if not ok:
+                    limpar_tela()
+                    # print(msg)
+                    return (
+                        transacao_plus,
+                        saldo,
+                        extrato,
+                        msg,
+                    )
+
                 limpar_tela()
                 transacao_plus += 1
+                saldo -= valor_transacao_plus
                 extrato.append(
-                    ("Transação Plus", valor_transacao_plus, datetime.now(timezone.utc))
+                    (
+                        "Transação Plus",
+                        valor_transacao_plus,
+                        datetime.now(timezone.utc),
+                    )
                 )
                 return (
                     transacao_plus,
+                    saldo,
                     extrato,
                     "Transação Plus ativada com sucesso.\n Você pode continuar suas operações.",
                 )
-
             case "n":
                 limpar_tela()
                 return (
                     transacao_plus,
+                    saldo,
                     extrato,
                     (
                         "Operação cancelada! Número máximo de operações diárias atingida."
@@ -168,30 +214,6 @@ def transacao_alem_limite_diario(transacao_plus, extrato, valor_transacao_plus):
                 )
             case _:
                 print("Opção inválida, tente novamente.")
-
-
-def registrar_operações_old(
-    opcao: str,
-    numero_operacoes: int,
-    transacao_plus: int,
-    extrato: list,
-    operacoes_diarias: int,
-    valor_transacao_plus: Decimal,
-) -> tuple[bool, int, int]:
-    """
-    Verifica se ainda é possível realizar a operação.
-    Retorna (pode_continuar, numero_operacoes, transacao_plus, extrato).
-    """
-    if opcao in ("d", "s", "i"):
-        if numero_operacoes >= operacoes_diarias_totais():
-            print("Limite diário de operações atingido.")
-            print(f"Operação nº {numero_operacoes}/{operacoes_diarias}")
-            transacao_plus, extrato, msg = transacao_alem_limite_diario(
-                transacao_plus, extrato, valor_transacao_plus
-            )
-            print(msg)
-            return False, numero_operacoes, transacao_plus, extrato
-    return True, numero_operacoes, transacao_plus, extrato
 
 
 def registrar_operacoes(
@@ -204,7 +226,7 @@ def registrar_operacoes(
     Apenas valida se ainda é possível realizar a operação.
     Não chama transação plus nem altera estado.
     """
-    limite_total = operacoes_diarias + transacao_plus
+    limite_total = operacoes_diarias_totais(operacoes_diarias, transacao_plus)
     if opcao in ("d", "s", "i") and numero_operacoes >= limite_total:
         return False
     return True
@@ -241,6 +263,7 @@ def sacar(
     extrato,
     numero_operacoes,
     saques_diarios,
+    valor_sacar_plus,
 ):
     """Realiza um saque na conta bancária."""
     if valor > limite_saque:
@@ -253,11 +276,17 @@ def sacar(
         )
 
     if numero_saques >= saques_diarios:
-        sacar_plus = sacar_alem_limite_diario(valor)
-        if isinstance(sacar_plus, Decimal):
-            valor = sacar_plus
+        resultado = sacar_alem_limite_diario(saldo, valor, extrato, valor_sacar_plus)
+        if resultado is None:
+            return (
+                saldo,
+                extrato,
+                numero_saques,
+                numero_operacoes,
+                "Operação cancelada! Saldo insuficiente.",
+            )
         else:
-            return saldo, extrato, numero_saques, numero_operacoes, sacar_plus
+            saldo, valor = resultado
 
     if valor > saldo:
         return (
@@ -335,10 +364,21 @@ def exibir_extrato(
 
 
 if __name__ == "__main__":
-    carregar_dados_de_entrada()
+    (ultimo_dia, saldo, transacao_plus, numero_operacoes, numero_saques, extrato) = (
+        carregar_dados_de_entrada()
+    )
 
     while True:
-        resetar_contadores_diarios()
+        ultimo_dia, transacao_plus, numero_operacoes, numero_saques = (
+            resetar_contadores_diarios(
+                ultimo_dia,
+                transacao_plus,
+                numero_operacoes,
+                numero_saques,
+                operacoes_diarias,
+                saques_diarios,
+            )
+        )
 
         print("\n=== MENU ===")
         print("[d] Depositar")
@@ -354,8 +394,8 @@ if __name__ == "__main__":
         if not registrar_operacoes(
             opcao, numero_operacoes, transacao_plus, operacoes_diarias
         ):
-            transacao_plus, extrato, msg = transacao_alem_limite_diario(
-                transacao_plus, extrato, valor_transacao_plus
+            transacao_plus, saldo, extrato, msg = transacao_alem_limite_diario(
+                transacao_plus, saldo, extrato, valor_transacao_plus
             )
             print(msg)
             if "cancelada" in msg:
@@ -379,6 +419,7 @@ if __name__ == "__main__":
                     numero_saques=numero_saques,
                     saques_diarios=saques_diarios,
                     numero_operacoes=numero_operacoes,
+                    valor_sacar_plus=valor_sacar_plus,
                 )
                 print(msg)
 
@@ -403,7 +444,14 @@ if __name__ == "__main__":
                 )
 
             case "q":
-                armazenar_dados_de_saida()
+                armazenar_dados_de_saida(
+                    ultimo_dia,
+                    saldo,
+                    transacao_plus,
+                    numero_operacoes,
+                    numero_saques,
+                    extrato,
+                )
                 print("Obrigado por utilizar nosso sistema bancário!")
                 break
 
