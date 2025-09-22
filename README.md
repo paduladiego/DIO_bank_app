@@ -128,6 +128,67 @@ Agora o sistema mantém o histórico mesmo após reiniciar, calcula dinamicament
 
 </details>
 
+<details>
+  <summary><b>Bank Application v2.2</b></summary>
+
+# Bank Application v2_2
+
+Versão mais completa até agora: **suporte a múltiplos usuários, múltiplas contas por CPF, transações isoladas por conta e rollback seguro em JSON**.  
+
+## 🚀 Novidades do v2_2
+
+- **Multiusuário e múltiplas contas**:  
+  - Usuários armazenados em `contas_bancarias.json`.  
+  - Cada CPF pode ter várias contas, com agência fixa `"0001"`.  
+- **Persistência por conta**:  
+  - Transações registradas em `transacoes_bancarias.json`, usando chave `cpf-agencia-conta`.  
+  - Cada conta mantém saldo, extrato e contadores independentes.  
+- **Rollback seguro**:  
+  - Antes de salvar, gera backup `.bkp`.  
+  - Se falhar, restaura o arquivo anterior automaticamente.  
+- **Fluxo de acesso revisado**:  
+  - `acessar_conta`: exige CPF válido, lista contas e valida agência/nº de conta.  
+  - `listar_contas`: mostra todas as contas atreladas a um CPF.  
+  - `criar_conta`: adiciona nova conta sequencialmente ao CPF.  
+- **Validação robusta de CPF**:  
+  - `checar_limpar_cpf`: remove caracteres inválidos, exige 11 dígitos, força loop de entrada até acerto.  
+- **Correções**:  
+  - `carregar_dados_bancarios`: loop de contas movido para dentro do loop de usuários.  
+  - `menu_conta`: corrigida chamada de `resetar_contadores_diarios` (sem parâmetros inválidos).  
+- **UX improvements**:  
+  - Mensagens padronizadas de sucesso/erro.  
+  - CPF formatado (`xxx.xxx.xxx-xx`) ao exibir dados.  
+  - Extrato mais claro com timestamps.  
+
+### ⚙️ Funcionalidades
+- **Depósito / Saque** (inclui `Saque Plus`).  
+- **Exibir extrato** (view-only).  
+- **Imprimir extrato** (consome operação e registra no histórico).  
+- **Transação Plus** (expansão do limite diário de operações).  
+- **Listagem de contas** por CPF.  
+- **Criação de contas e usuários** com persistência imediata.  
+
+### 📂 Estrutura de arquivos
+- `bank_app_v2_2.py` → código principal.  
+- `contas_bancarias.json` → usuários e contas.  
+- `transacoes_bancarias.json` → dados de transações por conta.  
+- `.bkp` → arquivos de rollback em caso de erro de gravação.  
+
+### ▶️ Execução
+```bash
+python bank_app_v2_2.py
+```
+## Menu inicial:
+```csharp
+[ac] Acessar conta
+[lc] Listar contas
+[nc] Nova conta
+[nu] Novo usuário
+[q]  Sair
+```
+Bank Application v2_2 representa um sistema bancário funcional, com múltiplos usuários e contas, persistência em JSON robusta e validações de entrada confiáveis.
+</details>
+
 
 <details>
   <summary><b>Bank Application v3</b></summary>
