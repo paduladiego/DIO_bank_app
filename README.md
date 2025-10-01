@@ -193,9 +193,6 @@ Bank Application v2_2 representa um sistema bancário funcional, com múltiplos 
 <details>
   <summary><b>Bank Application v3_0</b></summary>
 
-<details>
-  <summary><b>Bank Application v3_0</b></summary>
-
 # Bank Application v3_0
 
 A versão 3 marca a migração completa do sistema para um **modelo orientado a objetos (POO)**, trazendo maior organização, reuso e manutenção do código.  
@@ -273,7 +270,7 @@ Bank Application v3_0 entrega um sistema robusto, modular e orientado a objetos,
 </details>
 
 <details>
-  <summary><b>Bank Application v4</b></summary>
+  <summary><b>Bank Application v4_0</b></summary>
 
 em breve
 
