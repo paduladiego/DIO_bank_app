@@ -191,7 +191,89 @@ Bank Application v2_2 representa um sistema bancário funcional, com múltiplos 
 
 
 <details>
-  <summary><b>Bank Application v3</b></summary>
+  <summary><b>Bank Application v3_0</b></summary>
+
+<details>
+  <summary><b>Bank Application v3_0</b></summary>
+
+# Bank Application v3_0
+
+A versão 3 marca a migração completa do sistema para um **modelo orientado a objetos (POO)**, trazendo maior organização, reuso e manutenção do código.  
+Todas as funcionalidades do **v2_2** foram preservadas e aprimoradas dentro de classes e métodos.
+
+---
+
+## 🚀 Novidades da v3_0
+
+- **Arquitetura orientada a objetos**:
+  - `ConfigBanco`: centraliza constantes, limites, valores de taxas e arquivos JSON.
+  - `Transacao` (abstrata) e subclasses (`Deposito`, `Saque`, `SaquePlus`, `TransacaoPlus`) encapsulam regras de cada operação.
+  - `Conta`: representa uma conta bancária, com métodos para saldo, transações, extrato e persistência em JSON (com rollback seguro).
+  - `Usuario`: armazena dados pessoais e lista de contas associadas.
+  - `DadosBanco`: gerencia múltiplos usuários, cadastro de contas e acesso às informações.
+
+- **Persistência organizada**:
+  - Arquivo `contas_bancarias.json` → usuários e suas contas.
+  - Arquivo `transacoes_bancarias.json` → histórico detalhado de cada conta (`cpf-agencia-conta`).
+  - Rotinas automáticas de **backup `.bkp`** e recuperação em caso de falha.
+
+- **Melhorias no fluxo de operações**:
+  - Reset automático de contadores diários ao virar o dia.
+  - Extrato em formato tabular com colunas alinhadas.
+  - `imprimir_extrato` consome operação e gera registro no histórico.
+  - Controle claro de **limites de operações e saques**, com opção de ativar `Plus`.
+
+- **Validação aprimorada**:
+  - `ValidadorValor`: garante que todo valor seja `Decimal`, positivo e com até duas casas decimais.
+  - `checar_limpar_cpf` e `formatar_cpf`: padronizam entrada e exibição de CPFs.
+
+---
+
+## ⚙️ Funcionalidades
+- **Depósito / Saque** (inclui `Saque Plus`).  
+- **Transação Plus** (expansão do limite de operações).  
+- **Extrato**: exibir ou imprimir, com saldo e contadores.  
+- **Cadastro de usuários e contas** (multiusuário, multicontas).  
+- **Persistência automática** em JSON com rollback.  
+
+---
+
+## 📂 Estrutura de arquivos
+- `bank_app_v3_0.py` → código principal (POO).  
+- `contas_bancarias.json` → usuários e contas.  
+- `transacoes_bancarias.json` → transações de cada conta.  
+- `.bkp` → backups automáticos.  
+
+---
+
+## ▶️ Execução
+```bash
+python bank_app_v3_0.py
+```
+
+### Menu inicial:
+```bash
+[nu] Novo usuário
+[nc] Nova conta
+[lc] Listar contas
+[ac] Acessar conta
+[q]  Sair
+```
+
+### Menu da conta:
+``` bash
+[d] Depositar
+[s] Sacar
+[e] Exibir extrato
+[i] Imprimir extrato
+[v] Voltar
+```
+Bank Application v3_0 entrega um sistema robusto, modular e orientado a objetos, preparando a base para futuras integrações (ex.: banco de dados, APIs, interface gráfica).
+
+</details>
+
+<details>
+  <summary><b>Bank Application v4</b></summary>
 
 em breve
 
