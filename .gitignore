@@ -1,0 +1,27 @@
+# Bytecode compilado do Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ambientes virtuais
+.venv/
+venv/
+ENV/
+
+# Pastas de build e distribuição
+build/
+dist/
+*.egg-info/
+
+# Arquivos de dados (persistência em JSON) - não devem ir para o pacote
+contas_bancarias.json
+transacoes_bancarias.json
+*.bkp
+
+# Arquivos de testes locais
+teste_v3_0.py
+
+# Configs locais
+.vscode/
+.editorconfig

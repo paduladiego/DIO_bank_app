@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=72", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dio-bank-app"
+version = "3.0.0"
+description = "Aplicativo bancário em Python (CLI), evoluindo desde v1 até v3 (POO), com múltiplos usuários, contas e persistência em JSON."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Padula, Diego A." }]
+keywords = ["bank", "cli", "dio", "educational", "finances", "Suzano"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "License :: OSI Approved :: MIT License",
+  "Environment :: Console",
+  "Intended Audience :: Education",
+  "Topic :: Office/Business :: Financial",
+]
+
+[project.urls]
+Homepage = "https://github.com/paduladiego/DIO_bank_app"
+Source = "https://github.com/paduladiego/DIO_bank_app/issues"
+
+[project.scripts]
+bank-app = "bank_app.cli:run"
+
+[tool.setuptools.packages.find]
+include = ["bank_app*"]
